@@ -1,0 +1,25 @@
+# R session/state
+.Rhistory
+.RData
+
+# RStudio project settings
+.Rproj.user/
+
+# renv: local package library
+renv/library/
+renv/python/
+
+# User-level profile (often contains local-only settings)
+.Rprofile
+
+# Build outputs
+outputs/
+# If your raw data are large or sensitive, uncomment this
+# data/
+
+# Python pull outputs
+Python_pull/
+
+# OS junk
+.DS_Store
+Thumbs.db

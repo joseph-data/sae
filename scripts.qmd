@@ -1,0 +1,214 @@
+---
+title: "Supporting Document for Thesis II"
+subtitle: "Codes"
+author: "Joseph"
+
+format:
+  pdf: default
+  html: default
+
+execute:
+  working-dir: document
+
+editor: visual
+---
+
+# Data Collection
+
+## 1. Geoindicators Extraction (`gee.js`)
+
+**Purpose:** Compute annual geospatial indicators (e.g., NDVI, NDBI, Land Surface Temperature) for each Swedish county using Google Earth Engine (GEE).
+
+**Key Steps:**
+
+1.  **Initialization:** Load the Earth Engine API, authenticate, and define the study region by importing county boundary shapefiles.
+
+2.  **Satellite Band Selection:** Specify spectral bands or indices (e.g., `MODIS/006/MOD11A2` for LST, `LANDSAT/LC08/C01/T1_SR` for NDVI).
+
+3.  **Composite Creation:** For each year:
+
+    -   Filter image collections by date range.
+
+    -   Apply cloud masking functions.
+
+    -   Calculate mean or median composites per county polygon.
+
+4.  **Indicator Computation:** Derive additional indices, e.g., NDVI = (NIR - Red) / (NIR + Red).
+
+5.  **Aggregation:** Use `reduceRegion` with `ee.Reducer.mean()` and `ee.Reducer.stdDev()` over each county geometry.
+
+6.  **Export:** Write the annual statistics as CSV files to a specified Google Drive folder.
+
+```{javascript}
+#| file: data/gee.js
+#| echo: true
+#| message: false
+#| warning: false
+#| eval: false
+```
+
+## 2. Direct Unemployment Estimates (`1_SCBdirect_estimate.py`)
+
+**Purpose:** Retrieve and process direct unemployment counts per county from Statistics Sweden (SCB) API.
+
+**Key Steps:**
+
+1.  **Library Imports:** Use `requests`, `pandas`, and `json` for HTTP calls and data handling.
+
+2.  **API Authentication:** No key required; set headers for JSON content.
+
+3.  **Endpoint Definition:** Define URL and query parameters to request unemployment by county and year.
+
+4.  **Data Fetching:** Loop over target years, send POST requests, and collect JSON responses.
+
+5.  **Data Cleaning:** Normalize nested JSON into tabular form, rename columns for clarity, and filter out incomplete records.
+
+6.  **Output:** Save combined DataFrame as `direct_unemployment.csv` in the data folder.
+
+```{python}
+#| file: Python_pull/1_SCBdirect_estimate.py
+#| echo: true
+#| message: false
+#| warning: false
+#| eval: false
+```
+
+### 3. Population Density Data (`2_SCBpopDensity.py`)
+
+**Purpose:** Calculate population density per county by combining population counts and land area from SCB.
+
+**Key Steps:**
+
+1.  **Imports:** `requests`, `pandas`, and `numpy`.
+
+2.  **Population Query:** Request `BE/BE0101` table for population totals by county.
+
+3.  **Area Query:** Request `KM/KT0103` table for land area in square kilometers.
+
+4.  **Merging Data:** Join population and area tables on county codes.
+
+5.  **Density Calculation:** Compute `density = population / area` (persons per km²).
+
+6.  **Data Validation:** Check for zero or missing areas to avoid division errors.
+
+7.  **Output:** Export `population_density.csv` for downstream merging.
+
+```{python}
+#| file: Python_pull/2_SCBpopDensity.py
+#| echo: true
+#| message: false
+#| warning: false
+#| eval: false
+```
+
+# Data Preprocessing
+
+## 4. Load Libraries (`R/1_load_libraries.R`)
+
+**Purpose:** Ensure all required R packages are installed and loaded for spatial and statistical analysis.
+
+**Key Steps:**
+
+1.  **Install Missing Packages:** Check for packages (`tidyverse`, `sf`, `spdep`, `INLA`, `gt`, `leaflet`, etc.) and install if absent.
+
+2.  **Library Loading:** Load each package into the R session.
+
+3.  **Version Logging:** Print package versions to console for reproducibility.
+
+```{r}
+#| file: R/1_load_libraries.R
+#| echo: true
+#| message: false
+#| warning: false
+#| eval: false
+```
+
+## 5. Sweden Data Preprocessing (`R/2_sweden_preprocess.R`)
+
+**Purpose:** Read, clean, and merge spatial and tabular data to create the analysis-ready dataset.
+
+**Key Steps:**
+
+1.  **Read Shapefiles:** Use `st_read` to import county boundaries (e.g., `Sweden_Counties.shp`).
+
+2.  **Import CSVs:** Load `direct_unemployment.csv` and `population_density.csv`.
+
+3.  **Data Cleaning:** Standardize county code formats, handle missing or NA values (e.g., impute or remove), and ensure coordinate reference systems match.
+
+4.  **Join Datasets:** Merge shapefile with unemployment and density tables by county code.
+
+5.  **Add Geoindicators:** Read GEE output CSVs and merge on county and year.
+
+6.  **Final Checks:** Validate geometry integrity (`st_is_valid`), and export as an RDS object (`Sweden_data.rds`).
+
+```{r}
+#| file: R/2_sweden_preprocess.R
+#| echo: true
+#| message: false
+#| warning: false
+#| eval: false
+```
+
+## 6. Mapping Direct Estimates (`R/3_visualization.R`)
+
+**Purpose:** Generate both static and interactive maps to visualize direct unemployment estimates.
+
+**Key Steps:**
+
+1.  **Load Data:** Read `Sweden_data.rds`.
+
+2.  **Static Maps:** Use `ggplot2`:
+
+    -   Create choropleth layers with `geom_sf`.
+
+    -   Customize fill scales (`scale_fill_viridis_c`), legends, and titles.
+
+3.  **Interactive Maps:** Use `leaflet`:
+
+    -   Convert sf object to `leaflet` object.
+
+    -   Add polygons with `addPolygons`, tooltips for county names and values.
+
+    -   Integrate base maps (e.g., CartoDB.Positron).
+
+4.  **Save Outputs:** Export static maps as PNG and interactive HTML widgets.
+
+```{r}
+#| file: R/3_visualization.R
+#| echo: true
+#| message: false
+#| warning: false
+#| eval: false
+```
+
+## Small-Area Estimation
+
+## 7. Compute Small-Area Estimates (`R/4_SAE.R`)
+
+**Purpose:** Fit Fay–Herriot small-area models to improve precision of county-level unemployment estimates.
+
+**Key Steps:**
+
+1.  **Load Data:** Read merged `Sweden_data.rds`.
+
+2.  **Exploratory Analysis:** Compute Moran’s I (`spdep`) for spatial autocorrelation and VIF for collinearity checks.
+
+3.  **Model Fitting:**
+
+    -   **Untransformed Models:** Apply `lme` or `inla` for Fay–Herriot on the raw unemployment rates.
+
+    -   **Transformed Models:** Log-transform rates, refit models, and back-transform estimates.
+
+4.  **Diagnostics:** Plot residual vs. fitted values, Q-Q plots, and calculate MSE and CV for each area.
+
+5.  **Result Tables:** Use `gt` to create publication-ready tables of fixed effects coefficients and error metrics.
+
+6.  **Mapping SAE:** Add model-based estimates and CV layers to the sf object, and export final shapefile (`SAE_Results.shp`).
+
+```{r}
+#| file: R/4_SAE.R
+#| echo: true
+#| message: false
+#| warning: false
+#| eval: false
+```
