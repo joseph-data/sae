@@ -1,6 +1,6 @@
 # Small-Area Estimation (SAE) Workflow
 
-This repository implements a reproducible small-area estimation (SAE) framework for district-level unemployment rates in Sweden, using the **Fay–Herriot** area-level model and its variants. The analysis includes data preprocessing, model fitting (initial and transformed FH models), spatial diagnostics, model selection, uncertainty quantification, mapping, and automated report generation.
+This repository implements a reproducible small-area estimation (SAE) framework for county-level unemployment rates in Sweden, using the **Fay–Herriot** area-level model and its variants. The analysis includes data preprocessing, model fitting (initial and transformed FH models), spatial diagnostics, model selection, uncertainty quantification, mapping, and automated report generation.
 
 ## Repository Structure
 
