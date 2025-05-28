@@ -183,7 +183,7 @@ editor: visual
 
 ## Small-Area Estimation
 
-## 7. Compute Small-Area Estimates (`R/4_SAE.R`)
+## 7. Compute Small-Area Estimates (`R/test4.R`)
 
 **Purpose:** Fit Fay–Herriot small-area models to improve precision of county-level unemployment estimates.
 
@@ -206,7 +206,7 @@ editor: visual
 6.  **Mapping SAE:** Add model-based estimates and CV layers to the sf object, and export final shapefile (`SAE_Results.shp`).
 
 ```{r}
-#| file: R/4_SAE.R
+#| file: R/test4.R
 #| echo: true
 #| message: false
 #| warning: false

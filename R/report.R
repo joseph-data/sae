@@ -35,13 +35,14 @@ extract_coefs_fh <- function(fhobj) {
 coef_list <- purrr::map(models[c(full_names, reduced_names)], extract_coefs_fh)
 coef_df   <- purrr::imap_dfr(coef_list, ~ mutate(.x, model = .y))
 
-# Format estimate with p-value in parentheses
+# Format estimate with p-value in parentheses (fixed 3 decimals)
 coef_df <- coef_df %>%
   mutate(
     estimate = round(estimate, 3),
     p.value  = round(p.value, 3),
     est_p    = sprintf("%.3f (%.3f)", estimate, p.value)
   )
+
 # 3. Extract model statistics ---------------------------------------------- ----------------------------------------------
 # For FH objects, extract AIC, BIC, R2, and Adjusted R2 from model$model_select
 stats_df <- purrr::imap_dfr(models[c(full_names, reduced_names)], function(fhobj, name) {
@@ -102,6 +103,7 @@ write.csv(final_table,
 
 # Print formatted table to console
 print(final_table)
+
 
 
  # ---------------------------------------------------------

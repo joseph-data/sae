@@ -325,3 +325,11 @@ saveRDS(models, file = file.path(out_dir, "fh_models.rds"))
 write.csv(coefs, file = file.path(out_dir, "fh_coefficients.csv"), row.names = FALSE)
 
 message("test4.R optimized and styled with comment banners.")
+
+## Export final model
+
+unemp = estimators(fh_red_init, MSE = T, CV = T) %>%
+  as.data.frame() %>% 
+  left_join(sweden_shape, by = c("Domain" = "NAME_1"))
+
+saveRDS(unemp, file = file.path(out_dir, "unemp.rds"))
