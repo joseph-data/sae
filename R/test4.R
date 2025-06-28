@@ -172,6 +172,21 @@ fh_logit_init <- emdi::fh(
 
 summary(fh_logit_init)
 
+
+# Initial transformed for baseline comparison
+fh_initial_trans2 <- emdi::fh(
+  fixed              = formula_full,
+  vardir             = "var_est",
+  combined_data      = fh_data,
+  domains            = "County",
+  MSE                = TRUE,
+  correlation        = "spatial",
+  corMatrix          = kk + diag(1e-6, nrow(kk))
+)
+
+kk = W[idx, idx]
+eigen(kk)$values
+
 # ---------------------------------------------------------
 # 6. Reduced Models Fay–Herriot Model
 # ---------------------------------------------------------

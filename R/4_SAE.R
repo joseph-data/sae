@@ -24,10 +24,12 @@ W_mat   <- spdep::nb2mat(nb_list, style = "W", zero.policy = TRUE)
 
 # Test for spatial autocorrelation in direct estimates
 valid_idx <- which(!is.na(direct_data$Percent))
-emdi::spatialcor.tests(
+spat_test <- emdi::spatialcor.tests(
   direct    = direct_data$Percent[valid_idx],
   corMatrix = W_mat[valid_idx, valid_idx]
 )
+
+
 
 # ---------------------------------------------------------
 # 3. Prepare Data for SAE Modeling
@@ -147,6 +149,10 @@ fh_initial_trans <- emdi::fh(
   interval           = c(0, 100)
 )
 
+
+
+
+
 # ---------------------------------------------------------
 # 7. Mapping SAE Results
 # ---------------------------------------------------------
@@ -264,6 +270,6 @@ save(
   gt_stepwise,
   file = file.path(output_dir, "sae_tables_grouped.RData")
 )
-
+saveRDS(spat_test, "spat_test.rds")
 message("SAE script updated to use renamed variables and cleaned covariate list.")
 
