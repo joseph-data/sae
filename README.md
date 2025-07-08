@@ -102,10 +102,6 @@ This repository provides a reproducible framework for small-area estimation (SAE
 * **Model Objects**: `outputs/sae/fh_models.rds`
 * **Report Table**: `outputs/sae/sae_model_report.csv`
 
-## License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
 ---
 
 ## Contact
