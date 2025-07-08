@@ -107,5 +107,3 @@ This repository provides a reproducible framework for small-area estimation (SAE
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 ---
-
-Feel free to raise issues or contribute via pull requests!
