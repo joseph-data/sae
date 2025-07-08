@@ -1,8 +1,9 @@
 # Small-Area Estimation (SAE) Workflow
 
-[![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/joseph-data/sae/main.yml?branch=main)](https://github.com/joseph-data/sae/actions)
-[![GitHub stars](https://img.shields.io/github/stars/joseph-data/sae.svg)](https://github.com/joseph-data/sae/stargazers)
-[![GitHub forks](https://img.shields.io/github/forks/joseph-data/sae.svg)](https://github.com/joseph-data/sae/network)
+[![R](https://img.shields.io/badge/R-276DC3?logo=R&logoColor=white)](https://cran.r-project.org/)
+[![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![GeoJSON](https://img.shields.io/badge/GeoJSON-FFFB00?logo=geojson&logoColor=black)](https://geojson.org/)
+[![Google Earth Engine](https://img.shields.io/badge/Google%20Earth%20Engine-34A853?logo=googleearthengine&logoColor=white)](https://earthengine.google.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ## Project Write-up
@@ -12,27 +13,34 @@ A detailed write-up for this project can be found in the following PDF:
 
 ---
 
-This repository provides a reproducible framework for small-area estimation (SAE) of county-level unemployment rates in Sweden, using the **Fay–Herriot** area-level model and its variants. The analysis is organized for clarity and reproducibility.
+This repository provides a reproducible framework for small-area estimation (SAE) of county-level unemployment rates in Sweden, using the Fay–Herriot area-level model and its variants. The workflow integrates R for statistical modeling, Python for data acquisition from SCB, and Google Earth Engine (GEE) for geospatial data.
 
 ## Repository Structure
 
 ```
-├── R/                           # R scripts for each workflow step
-│   ├── 1_load_libraries.R       # Load required packages
-│   ├── 2_sweden_preprocess.R    # Data import and preprocessing (combined_data, fh_data)
-│   ├── 3_visualization.R        # Map and plot functions (map_plot, compare_plot)
-│   ├── test4.R                  # Main SAE modeling script
-│   └── sae_model_report.R       # Generates coefficient/statistics report (sae_model_report.csv)
+├── R/
+│   ├── 1_load_libraries.R
+│   ├── 2_sweden_preprocess.R
+│   ├── 3_visualization.R
+│   ├── test4.R
+│   └── sae_model_report.R
 ├── outputs/
-│   └── sae/                     # Results: model objects, CSV tables, and plots
-│       ├── fh_models.rds        # Saved FH model list
-│       ├── sae_model_report.csv # Final wide-format table of coefficients & stats
+│   └── sae/
+│       ├── fh_models.rds
+│       ├── sae_model_report.csv
 │       ├── correlation_matrix.png
-│       ├── sae_map_*.png        # Maps by model
-│       └── compare_*.png        # Compare plots by model
-├── data/                        # Raw input files: direct_estimates.csv, geodata.csv, etc.
-├── Msc Thesis II.pdf            # Full project write-up
-└── README.md                    # This file
+│       ├── sae_map_*.png
+│       └── compare_*.png
+├── data/
+│   ├── directEstimate.json        # JSON for direct unemployment estimates (from SCB API)
+│   ├── popdensity.json            # Population density data (from SCB API)
+│   ├── vacancies.csv              # Job vacancies (from arbetsformedlingen.se)
+├── Python_pull/                   # Python helper scripts for data acquisition
+│   ├── 1_SCBdirect_estimate.py    # Pulls direct unemployment estimates from SCB API
+│   └── 2_SCBpopDensity.py         # Pulls population density from SCB API
+├── gee.js                         # JavaScript for Google Earth Engine geospatial data extraction
+├── Msc Thesis II.pdf              # Full project write-up
+└── README.md
 ```
 
 ## Getting Started
