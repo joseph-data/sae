@@ -23,6 +23,10 @@ fh_data <- combined_data %>% arrange(County)
 # Build spatial weights
 nb  <- poly2nb(sweden_shape, row.names = sweden_shape$NAME_1)
 W   <- nb2mat(nb, style = "W", zero.policy = TRUE)
+# W's row/col order comes from sweden_shape$NAME_1; fail loudly if that ever
+# drifts out of sync with fh_data$County instead of silently pairing the
+# wrong counties' variances with the wrong neighbours.
+stopifnot(identical(as.character(sweden_shape$NAME_1), as.character(fh_data$County)))
 idx <- which(!is.na(fh_data$Percent))
 # Moran's I test
 spatialcor.tests(
@@ -109,6 +113,41 @@ fh_data <- fh_data %>%
     var_est   = as.numeric(var_est)
   ) %>%
   as.data.frame()
+
+# ---------------------------------------------------------
+# 4b. VIF-Based Covariate Pruning
+# ---------------------------------------------------------
+# The correlation matrix above shows several highly correlated covariates
+# (e.g. LST_log/SoilMoist_log). Fitting the FH model on all candidates at
+# once with ~20 domains leaves X'Vi^-1X singular. Iteratively drop the
+# highest-VIF covariate until all remaining VIFs are <= 10.
+repeat {
+  vif_fit  <- lm(Percent ~ ., data = fh_data %>% dplyr::select(Percent, all_of(covariates)))
+  vif_vals <- car::vif(vif_fit)
+  # car::vif() reports GVIF^(1/(2*Df)) instead of VIF when any predictor
+  # (e.g. the Northern factor) has more than 1 df; square it back to a
+  # VIF-comparable scale before thresholding.
+  vif_scalar <- if (is.matrix(vif_vals)) vif_vals[, "GVIF^(1/(2*Df))"]^2 else vif_vals
+  worst <- names(which.max(vif_scalar))
+  if (vif_scalar[worst] <= 10 || length(covariates) <= 2) break
+  message("Dropping '", worst, "' for collinearity (VIF = ", round(vif_scalar[worst], 1), ")")
+  covariates <- setdiff(covariates, worst)
+}
+print(round(vif_scalar, 2))
+message("Covariates retained after VIF pruning: ", paste(covariates, collapse = ", "))
+
+# ---------------------------------------------------------
+# 4c. Standardize Numeric Covariates
+# ---------------------------------------------------------
+# Even with collinearity ruled out, raw covariate scales span many orders
+# of magnitude (e.g. NO2_mol_m2 ~1e-5 vs Vacancy_log in the single digits
+# vs Urban_pct up to 100), which leaves X'Vi^-1X numerically singular in
+# floating point during emdi::fh()'s REML search. Standardizing avoids
+# that; fitted values/predictions are unaffected, only coefficients
+# become per-SD effects.
+numeric_covariates <- covariates[sapply(fh_data[covariates], is.numeric)]
+fh_data[numeric_covariates] <- scale(fh_data[numeric_covariates])
+
 # Define full formula
 formula_full <- as.formula(paste("Percent ~", paste(covariates, collapse = " + ")))
 
@@ -174,6 +213,9 @@ summary(fh_logit_init)
 
 
 # Initial transformed for baseline comparison
+kk <- W[idx, idx]
+eigen(kk)$values
+
 fh_initial_trans2 <- emdi::fh(
   fixed              = formula_full,
   vardir             = "var_est",
@@ -183,9 +225,6 @@ fh_initial_trans2 <- emdi::fh(
   correlation        = "spatial",
   corMatrix          = kk + diag(1e-6, nrow(kk))
 )
-
-kk = W[idx, idx]
-eigen(kk)$values
 
 # ---------------------------------------------------------
 # 6. Reduced Models Fay–Herriot Model
@@ -271,13 +310,9 @@ purrr::iwalk(models, function(mod, nm) {
   # Comparison Plot
   compare_path <- file.path(out_dir, paste0("compare_", nm, ".png"))
   png(compare_path, width = 800, height = 600)
-  compare_plot(
-    object        = mod,
-    combined_data = fh_data,
-    indicator     = "FH",
-    MSE           = TRUE,
-    CV            = TRUE
-  )
+  # compare_plot.fh()'s real parameter is `model`, not `object`/`combined_data`
+  # (neither of which it accepts) - pass positionally so it actually binds.
+  compare_plot(mod, MSE = TRUE, CV = TRUE)
   dev.off()
 })
 

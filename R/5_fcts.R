@@ -54,34 +54,56 @@ if (length(numeric_covs) > 1) {
 }
 
 # ---------------------------------------------------------
-# 3. Select Top-k Covariates & Multicollinearity Check
+# 3. Multicollinearity Check (full candidate set)
 # ---------------------------------------------------------
-top_k <- 3
-selected_vars <- corr_df$variable[1:top_k]
-message("Selected top ", top_k, " covariates: ", paste(selected_vars, collapse = ", "))
-
-if (length(selected_vars) > 1) {
-  vif_model <- lm(
-    Percent ~ ., data = data_fh %>% dplyr::select(Percent, all_of(selected_vars))
-  )
-  vif_vals <- car::vif(vif_model)
-  print(vif_vals)
-  high_vif <- names(vif_vals)[vif_vals > 5]
-  if (length(high_vif) > 0) warning("High VIF in: ", paste(high_vif, collapse=", "))
+# The correlation ranking above is descriptive only. Pre-selecting the
+# top-k covariates by correlation with Percent and then fitting/stepwise-
+# selecting on that same ~21-domain sample would be double dipping and
+# would invalidate the resulting p-values/VIFs. The full candidate set is
+# carried forward instead and left to emdi::step() alone (section 5).
+# VIF depends only on the predictors' own correlation structure (not on
+# Percent), so pruning by VIF is not data dredging the way the top-k
+# correlation filter was. Iteratively drop the highest-VIF covariate
+# until all remaining VIFs are <= 10.
+repeat {
+  vif_fit  <- lm(Percent ~ ., data = data_fh %>% dplyr::select(Percent, all_of(cand_vars)))
+  vif_vals <- car::vif(vif_fit)
+  # car::vif() reports GVIF^(1/(2*Df)) instead of VIF when any predictor
+  # (e.g. the Northern factor) has more than 1 df; square it back to a
+  # VIF-comparable scale before thresholding.
+  vif_scalar <- if (is.matrix(vif_vals)) vif_vals[, "GVIF^(1/(2*Df))"]^2 else vif_vals
+  worst <- names(which.max(vif_scalar))
+  if (vif_scalar[worst] <= 10 || length(cand_vars) <= 2) break
+  message("Dropping '", worst, "' for collinearity (VIF = ", round(vif_scalar[worst], 1), ")")
+  cand_vars <- setdiff(cand_vars, worst)
 }
+print(round(vif_scalar, 2))
+message("Covariates retained after VIF pruning: ", paste(cand_vars, collapse = ", "))
 
 # ---------------------------------------------------------
-# 4. Preliminary Fay–Herriot Model
+# 3b. Standardize Numeric Covariates
+# ---------------------------------------------------------
+# Even with collinearity ruled out, raw covariate scales span many orders
+# of magnitude (e.g. NO2_mol_m2 ~1e-5 vs Vacancy_New in the thousands),
+# which leaves X'Vi^-1X numerically singular in floating point during
+# emdi::fh()'s REML search. Standardizing avoids that; fitted values and
+# predictions are unaffected, only coefficients become per-SD effects.
+numeric_cand <- cand_vars[sapply(data_fh[cand_vars], is.numeric)]
+data_fh[numeric_cand] <- scale(data_fh[numeric_cand])
+
+# ---------------------------------------------------------
+# 4. Preliminary Fay–Herriot Model (full candidate set)
 # ---------------------------------------------------------
 prelim_formula <- as.formula(
-  paste("Percent ~", paste(selected_vars, collapse = " + "))
+  paste("Percent ~", paste(cand_vars, collapse = " + "))
 )
 fh_prelim <- emdi::fh(
   fixed         = prelim_formula,
   vardir        = "var_est",
   combined_data = data_fh,
   domains       = "County",
-  method        = "reml"
+  method        = "reml",
+  MSE           = TRUE
 )
 summary(fh_prelim)
 

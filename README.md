@@ -56,9 +56,9 @@ Reproducible workflow for county-level unemployment small-area estimation in Swe
 **Key inputs used by `R/2_sweden_preprocess.R`:**
 
 - `data/SWE_adm/SWE_adm1.shp` (county boundaries)
-- `data/direct_estimates.csv` (direct unemployment estimates)
+- `data/UnempDirect.csv` (direct unemployment estimates, from `Python_pull/notebooks/02_UnempDirect.ipynb`)
 - `data/geodata.csv` (GEE-derived covariates)
-- `data/popdensity.csv` (population density)
+- `data/Pop_density.csv` (population density, from `Python_pull/notebooks/01_Population_Density.ipynb`)
 - `data/vacancies.csv` (job vacancies)
 
 **Common outputs:**
@@ -72,12 +72,7 @@ Reproducible workflow for county-level unemployment small-area estimation in Swe
 
 ## Optional: refresh SCB inputs (Python)
 
-See [`Python_pull/README.md`](Python_pull/README.md) and run the notebooks in `Python_pull/notebooks/`. They currently write:
-
-- `data/Pop_density.csv`
-- `data/UnempDirect.csv`
-
-If you want these to feed the R pipeline as-is, rename them to match the filenames expected by `R/2_sweden_preprocess.R` (or update the R script).
+See [`Python_pull/README.md`](Python_pull/README.md) and run the notebooks in `Python_pull/notebooks/`. They write `data/Pop_density.csv` and `data/UnempDirect.csv` directly, which `R/2_sweden_preprocess.R` reads as-is — no renaming or column changes needed.
 
 ## Contact
 

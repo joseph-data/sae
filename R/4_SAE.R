@@ -22,6 +22,11 @@ direct_data <- combined_data %>% dplyr::arrange(County)
 nb_list <- spdep::poly2nb(sweden_shape, row.names = sweden_shape$NAME_1)
 W_mat   <- spdep::nb2mat(nb_list, style = "W", zero.policy = TRUE)
 
+# W_mat's row/col order comes from sweden_shape$NAME_1; fail loudly if that
+# ever drifts out of sync with direct_data$County instead of silently
+# pairing the wrong counties' variances with the wrong neighbours.
+stopifnot(identical(as.character(sweden_shape$NAME_1), as.character(direct_data$County)))
+
 # Test for spatial autocorrelation in direct estimates
 valid_idx <- which(!is.na(direct_data$Percent))
 spat_test <- emdi::spatialcor.tests(
@@ -65,6 +70,42 @@ if (length(numeric_covs) > 1) {
 } else {
   message("Not enough numeric covariates for correlation check.")
 }
+
+# ---------------------------------------------------------
+# 3b. VIF-Based Covariate Pruning
+# ---------------------------------------------------------
+# The correlation matrix above shows severe collinearity (e.g. VIIRS_avg/
+# PopDensity r = 0.99, LST_C/NDVI_avg/SoilMoisture r > 0.9). Fitting the FH
+# model on all candidates at once with ~20 domains leaves X'V^-1X
+# numerically singular. Iteratively drop the highest-VIF covariate until
+# all remaining VIFs are <= 10.
+repeat {
+  vif_fit  <- lm(Percent ~ ., data = data_fh %>% dplyr::select(Percent, all_of(cand_vars)))
+  vif_vals <- car::vif(vif_fit)
+  # car::vif() reports GVIF^(1/(2*Df)) instead of VIF when any predictor
+  # (e.g. the Northern factor) has more than 1 df; square it back to a
+  # VIF-comparable scale before thresholding.
+  vif_scalar <- if (is.matrix(vif_vals)) vif_vals[, "GVIF^(1/(2*Df))"]^2 else vif_vals
+  worst <- names(which.max(vif_scalar))
+  if (vif_scalar[worst] <= 10 || length(cand_vars) <= 2) break
+  message("Dropping '", worst, "' for collinearity (VIF = ", round(vif_scalar[worst], 1), ")")
+  cand_vars <- setdiff(cand_vars, worst)
+}
+print(round(vif_scalar, 2))
+message("Covariates retained after VIF pruning: ", paste(cand_vars, collapse = ", "))
+
+# ---------------------------------------------------------
+# 3c. Standardize Numeric Covariates
+# ---------------------------------------------------------
+# The design matrix is full rank (VIF pruning above already ruled out
+# collinearity), yet NO2_mol_m2 (variance ~1e-11) and Vacancy_New
+# (variance ~1e7) sit ~18 orders of magnitude apart on their raw scales.
+# Combined with var_est weights around 1e-4, X'Vi^-1X is mathematically
+# invertible but numerically singular in floating point. Standardizing
+# puts every numeric covariate on a comparable scale; fitted values and
+# predictions are unaffected, only coefficients become per-SD effects.
+numeric_cand <- cand_vars[sapply(data_fh[cand_vars], is.numeric)]
+data_fh[numeric_cand] <- scale(data_fh[numeric_cand])
 
 # ---------------------------------------------------------
 # 4. Initial Fay–Herriot Model

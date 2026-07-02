@@ -10,11 +10,14 @@ source(here::here("R", "1_load_libraries.R"))
 # ---------------------------------------------------------
 # 2. Define Paths & Helper Functions
 # ---------------------------------------------------------
+# direct_est/popdensity point at the CSVs actually written by the
+# Python_pull notebooks (Python_pull/notebooks/02_UnempDirect.ipynb and
+# 01_Population_Density.ipynb).
 paths <- list(
   shapefile   = data_path("SWE_adm", "SWE_adm1.shp"),
-  direct_est  = data_path("direct_estimates.csv"),
+  direct_est  = data_path("UnempDirect.csv"),
   geodata     = data_path("geodata.csv"),
-  popdensity  = data_path("popdensity.csv"),
+  popdensity  = data_path("Pop_density.csv"),
   vacancies   = data_path("vacancies.csv")
 )
 
@@ -45,12 +48,15 @@ message("Shapefile loaded: ", nrow(sweden_shape), " polygons")
 # ---------------------------------------------------------
 # 4. Read Direct Estimates & Compute Variance
 # ---------------------------------------------------------
+# UnempDirect.csv: one row per county, with `county` (e.g. "Stockholm
+# county"), `rate` (unemployment %, or SCB's ".." missing marker), and
+# `margin_of_error` (+/- %, 95% CI half-width).
 direct_est <-
   read_data(paths$direct_est) %>%
   dplyr::mutate(
-    County          = recode_county(County),
-    Percent         = na_if(Percent_2025K1, "..") %>% as.numeric() / 100,
-    SE95            = na_if(Percent_2025K1_me, "..") %>% as.numeric() / 100,
+    County          = county %>% stringr::str_remove(" county$") %>% recode_county(),
+    Percent         = na_if(as.character(rate), "..") %>% as.numeric() / 100,
+    SE95            = na_if(as.character(margin_of_error), "..") %>% as.numeric() / 100,
     standard_error  = SE95 / 1.96,
     var_est         = standard_error^2,
     eff_sample_size = (Percent / standard_error)^2
@@ -82,16 +88,15 @@ geo_data <-
 message("Geospatial data loaded: ", nrow(geo_data), " rows with selected indicators")
 
 # b) Population density
+# Pop_density.csv: one row per county, with `county` (e.g. "Stockholm
+# county") and `PopDen` (persons per km2, or SCB's ".." missing marker).
 pop_density <-
   read_data(paths$popdensity) %>%
-  dplyr::rename(
-    County         = County,
-    PopDensity     = PopDensity_2024
-  ) %>%
   dplyr::mutate(
-    County = recode_county(County),
-    PopDensity = as.numeric(PopDensity)
-  )
+    County     = county %>% stringr::str_remove(" county$") %>% recode_county(),
+    PopDensity = na_if(as.character(PopDen), "..") %>% as.numeric()
+  ) %>%
+  dplyr::select(County, PopDensity)
 message("Population density loaded: ", nrow(pop_density), " rows")
 
 # c) Job vacancies (latest period)
